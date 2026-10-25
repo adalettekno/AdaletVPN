@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>com.adalettekno.AdaletVPN</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <name>AdaletVPN</name>
+  <summary>Linux üzerinde e-imza ile UYAP VPN bağlantısı</summary>
+  <description>
+    <p>AdaletVPN, Linux üzerinde e-imza ile UYAP VPN bağlantısı kurmanızı sağlar.</p>
+  </description>
+  <releases>
+    <release version="1.0.0" date="2026-10-25"/>
+  </releases>
+  <developer id="com.adalettekno">
+    <name>Adalet Tekno</name>
+  </developer>
+  <url type="homepage">https://www.adalettekno.com/</url>
+  <launchable type="desktop-id">com.adalettekno.AdaletVPN.desktop</launchable>
+  <icon type="stock">com.adalettekno.AdaletVPN</icon>
+  <provides><binary>adaletvpn</binary></provides>
+  <categories><category>Network</category></categories>
+</component>

@@ -1,0 +1,199 @@
+.adaletvpn,
+.adaletvpn * {
+  font-family: "AdaletVPN Text";
+}
+
+window.tray-flight,
+window.tray-flight * {
+  background-color: transparent;
+  box-shadow: none;
+}
+
+@keyframes adaletvpn-spin {
+  to {
+    -gtk-icon-transform: rotate(1turn);
+  }
+}
+
+.adaletvpn spinner:checked {
+  opacity: 1;
+  animation: adaletvpn-spin 1s linear infinite;
+}
+
+.connection-action label {
+  font-weight: 700;
+  font-size: 1.1em;
+}
+
+button.connection-action {
+  background: transparent;
+  border: none;
+  box-shadow: none;
+  padding: 0;
+  min-width: 0;
+  min-height: 0;
+}
+
+button.connection-action:focus-visible {
+  outline: 2px solid @theme_selected_bg_color;
+  outline-offset: 3px;
+}
+
+.power-circle {
+  border-radius: 50%;
+  background-color: @theme_selected_bg_color;
+  color: @theme_selected_fg_color;
+  border: 1px solid alpha(@theme_fg_color, 0.18);
+}
+
+.connection-action:hover .power-circle {
+  background-color: shade(@theme_selected_bg_color, 0.88);
+}
+
+.connection-action.connected .power-circle {
+  background-color: @success_color;
+  color: @theme_selected_fg_color;
+}
+
+.connection-action.connected:hover .power-circle {
+  background-color: shade(@success_color, 0.86);
+}
+
+.connection-action:disabled .power-circle {
+  background-color: alpha(@theme_fg_color, 0.08);
+  color: alpha(@theme_fg_color, 0.40);
+  border-color: alpha(@theme_fg_color, 0.16);
+}
+
+.power-spinner {
+  color: @theme_selected_fg_color;
+  margin: 3px;
+}
+
+.vpn-badge {
+  border-radius: 8px;
+  padding: 4px 8px;
+}
+
+.vpn-badge.offline {
+  background-color: alpha(@theme_fg_color, 0.07);
+}
+
+.vpn-badge.online {
+  background-color: alpha(@success_color, 0.12);
+}
+
+.vpn-badge.working {
+  background-color: alpha(@theme_selected_bg_color, 0.12);
+  color: @theme_selected_bg_color;
+}
+
+.vpn-error > button {
+  border-radius: 8px;
+  padding: 4px 8px;
+  border: none;
+  box-shadow: none;
+  background-image: none;
+  background-color: alpha(@error_color, 0.12);
+}
+
+.vpn-error > button:hover {
+  background-color: alpha(@error_color, 0.20);
+}
+
+.vpn-error > button:focus-visible {
+  outline: 2px solid @error_color;
+  outline-offset: 2px;
+}
+
+.forget-action {
+  color: alpha(@theme_fg_color, 0.70);
+  background-image: none;
+  background-color: transparent;
+  border-color: alpha(@theme_fg_color, 0.18);
+  box-shadow: none;
+}
+
+.forget-action:hover {
+  background-color: alpha(@theme_fg_color, 0.06);
+}
+
+.forget-action:focus-visible {
+  outline: 2px solid @theme_selected_bg_color;
+  outline-offset: 2px;
+}
+
+.adaletvpn-dark entry:not(:focus-within),
+.adaletvpn-dark passwordentry:not(:focus-within),
+.adaletvpn-dark dropdown > button,
+.adaletvpn-dark checkbutton.remember-option {
+  border-color: alpha(@theme_fg_color, 0.40);
+}
+
+.adaletvpn-dark button:disabled,
+.adaletvpn-dark checkbutton:disabled,
+.adaletvpn-dark entry:disabled,
+.adaletvpn-dark passwordentry:disabled {
+  color: alpha(@theme_fg_color, 0.65);
+  border-color: alpha(@theme_fg_color, 0.28);
+}
+
+.vault-warning,
+.scan-warning,
+.vpn-error {
+  color: @error_color;
+}
+
+.certificate-status.valid {
+  color: @success_color;
+}
+
+.certificate-status.invalid,
+.certificate-missing label {
+  color: @error_color;
+}
+
+.adaletvpn-dark .certificate-status.valid {
+  color: #65d58a;
+}
+
+.adaletvpn-dark .certificate-status.invalid,
+.adaletvpn-dark .certificate-missing label,
+.adaletvpn-dark .vault-warning,
+.adaletvpn-dark .scan-warning,
+.adaletvpn-dark .vpn-error {
+  color: #ff8a92;
+}
+
+.vault-warning {
+  transform: translate(0, -8px);
+}
+
+.vault-warning > button {
+  background-color: @theme_bg_color;
+  border-radius: 5px;
+  min-width: 14px;
+  min-height: 14px;
+  padding: 1px;
+}
+
+.certificate-status {
+  border: 1px solid alpha(currentColor, 0.22);
+  border-radius: 5px;
+  padding: 8px;
+}
+
+.certificate-missing label {
+  font-weight: bold;
+}
+
+checkbutton.remember-option {
+  border: 1px solid alpha(currentColor, 0.22);
+  border-radius: 7px;
+  padding: 6px 8px;
+}
+
+checkbutton.remember-option.remember-selected {
+  background-color: alpha(@theme_selected_bg_color, 0.10);
+  border-color: alpha(@theme_selected_bg_color, 0.40);
+}

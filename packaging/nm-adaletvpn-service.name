@@ -1,0 +1,5 @@
+[VPN Connection]
+name=adaletvpn
+service=org.freedesktop.NetworkManager.openconnect.adaletvpn
+program=/usr/local/libexec/adaletvpn/nm-adaletvpn-service
+supports-multiple-connections=true

@@ -1,0 +1,55 @@
+#!/usr/bin/python3 -I
+
+import os
+from pathlib import Path
+import re
+import stat
+import sys
+
+SERVICE = 'org.freedesktop.NetworkManager.openconnect.adaletvpn'
+ROOT = Path('/usr/local/libexec/adaletvpn')
+
+
+def trusted(path):
+    path = path.resolve(strict=True)
+    for item in (path, *path.parents):
+        st = item.stat()
+        if st.st_uid != 0 or st.st_mode & 0o022:
+            raise RuntimeError('Yardımcı dosyasının sahipliği veya izni uygun değil.')
+    if not stat.S_ISREG(path.stat().st_mode):
+        raise RuntimeError('Yardımcı dosyası bulunamadı.')
+    return str(path)
+
+
+def main():
+    name = SERVICE
+    args = sys.argv[1:]
+    if args:
+        if len(args) == 2 and args[0] == '--bus-name':
+            name = args[1]
+        elif len(args) == 1 and args[0].startswith('--bus-name='):
+            name = args[0].split('=', 1)[1]
+        else:
+            raise RuntimeError('Desteklenmeyen hizmet seçeneği.')
+    if not re.fullmatch(re.escape(SERVICE) + r'(?:\.Connection_[0-9]+)?', name):
+        raise RuntimeError('Beklenmeyen hizmet adı.')
+    shim = trusted(ROOT / 'tunnel-pkcs11.so')
+    program = None
+    for candidate in ('/usr/libexec/nm-openconnect-service',
+                      '/usr/lib/NetworkManager/nm-openconnect-service'):
+        if Path(candidate).is_file():
+            program = trusted(Path(candidate))
+            break
+    if program is None:
+        raise RuntimeError('NetworkManager OpenConnect eklentisi kurulu değil.')
+    env = {'PATH': '/usr/sbin:/usr/bin:/sbin:/bin', 'LANG': 'C', 'LC_ALL': 'C',
+           'LD_PRELOAD': shim, 'NM_VPN_LOG_LEVEL': '4'}
+    os.execve(program, [program, '--bus-name', name], env)
+
+
+if __name__ == '__main__':
+    try:
+        main()
+    except Exception:
+        print('AdaletVPN tünel hizmeti başlatılamadı.', file=sys.stderr)
+        sys.exit(125)
