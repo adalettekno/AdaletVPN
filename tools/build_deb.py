@@ -68,7 +68,7 @@ def build(version=None):
             f'Package: adaletvpn\nVersion: {version}\nArchitecture: {arch}\n'
             'Maintainer: Adalet Tekno\nHomepage: https://www.adalettekno.com/\nSection: net\nPriority: optional\n'
             f'Installed-Size: {(size + 1023) // 1024}\n'
-            'Depends: python3 (>= 3.10), python3-gi, python3-gi-cairo, '
+            'Depends: python3 (>= 3.10), python3-gi, python3-gi-cairo, python3-pil, '
             'gir1.2-gtk-4.0, python3-cryptography (>= 42), libfontconfig1, '
             'network-manager, network-manager-openconnect, openconnect, libopenconnect5, '
             'gnutls-bin, libgnutls30t64 | libgnutls30, libc6 (>= 2.34), libsecret-1-0\n'

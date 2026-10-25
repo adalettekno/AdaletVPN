@@ -57,6 +57,9 @@ class DebianPackageTests(unittest.TestCase):
             metadata = ET.parse(stage / 'usr/share/metainfo/com.adalettekno.AdaletVPN.metainfo.xml').getroot()
             self.assertEqual(subprocess.check_output(
                 ['dpkg-deb', '-f', str(package), 'Version'], text=True).strip(), '1.0.0')
+            depends = subprocess.check_output(
+                ['dpkg-deb', '-f', str(package), 'Depends'], text=True)
+            self.assertIn('python3-pil', [part.strip() for part in depends.split(',')])
             self.assertEqual(metadata.find('releases/release').get('version'), '1.0.0')
             self.assertEqual(metadata.findtext('developer/name'), 'Adalet Tekno')
             self.assertEqual(metadata.findtext('description/p'),
