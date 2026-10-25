@@ -32,7 +32,7 @@ sudo apt remove adaletvpn
 
 Bu, kasadaki sicil, parola ve PIN kayıtlarını silmez. Onları paket dururken uygulamadaki «Kayıtlı bilgileri sil» ile kaldırın.
 
-# Paket derlemek
+# Derleme
 
 `cc` ve `dpkg-deb` kurulu olsun. Depo kökünde:
 
