@@ -7,6 +7,7 @@ import unittest
 import xml.etree.ElementTree as ET
 from unittest.mock import AsyncMock, patch
 
+from adaletvpn import __version__
 from adaletvpn.pkcs11 import PKCS11Certificates
 
 
@@ -56,11 +57,11 @@ class DebianPackageTests(unittest.TestCase):
             app = stage / 'usr/lib/adaletvpn'
             metadata = ET.parse(stage / 'usr/share/metainfo/com.adalettekno.AdaletVPN.metainfo.xml').getroot()
             self.assertEqual(subprocess.check_output(
-                ['dpkg-deb', '-f', str(package), 'Version'], text=True).strip(), '1.0.0')
+                ['dpkg-deb', '-f', str(package), 'Version'], text=True).strip(), __version__)
             depends = subprocess.check_output(
                 ['dpkg-deb', '-f', str(package), 'Depends'], text=True)
             self.assertIn('python3-pil', [part.strip() for part in depends.split(',')])
-            self.assertEqual(metadata.find('releases/release').get('version'), '1.0.0')
+            self.assertEqual(metadata.find('releases/release').get('version'), __version__)
             self.assertEqual(metadata.findtext('developer/name'), 'Adalet Tekno')
             self.assertEqual(metadata.findtext('description/p'),
                              'AdaletVPN, Linux üzerinde e-imza ile UYAP VPN bağlantısı kurmanızı sağlar.')

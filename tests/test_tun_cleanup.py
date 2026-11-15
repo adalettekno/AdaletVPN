@@ -1,7 +1,7 @@
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, Mock, patch
+from unittest.mock import AsyncMock, patch
 from gi.repository import GLib
 
 from adaletvpn.errors import CodedError

@@ -7,7 +7,7 @@ from gi.repository import GLib
 from adaletvpn.auth import FormAnswers, NativeAuthenticator
 from adaletvpn.auth_worker import Form, Option, answer_native_form
 from adaletvpn.core import Credentials
-from adaletvpn.errors import CodedError, MESSAGES
+from adaletvpn.errors import CodedError
 from adaletvpn.networkmanager import GioTransport, connection_settings
 from adaletvpn.nm_worker import serve
 from adaletvpn.preflight import VPNProfile
@@ -32,8 +32,8 @@ class PinTests(unittest.TestCase):
             setter.assert_not_called()
             label = Mock()
             show_message(label, message)
-            self.assertIn('foreground="#c01c28"', label.set_markup.call_args.args[0])
-            self.assertIn(message, label.set_markup.call_args.args[0])
+            label.add_css_class.assert_called_with("pin-warning")
+            label.set_text.assert_called_with(message)
 
     def test_manual_retry_requires_matching_warning_and_never_retries_automatically(self):
         for level, banner in (("low", LOW), ("final", FINAL)):

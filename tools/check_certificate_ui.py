@@ -114,7 +114,7 @@ def check():
                 assert window.controller.state == State.CONNECTED
                 assert window.connection_actions.get_visible_child_name() == "stop"
                 assert window.status.get_text() == "Bağlı"
-                assert ('#65d58a' if window.dark_theme else '#22863a') in window.status.get_label()
+                assert window.status.has_css_class("online")
                 assert window.pin.get_text() == ""
                 assert window.password.get_text() == ""
                 window.stop_button.emit("clicked")

@@ -1,0 +1,32 @@
+name: Checks
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y python3-venv python3-gi python3-gi-cairo python3-pil gir1.2-gtk-4.0 libfontconfig1 libsecret-1-0 libopenconnect5 libgnutls30t64 gcc dpkg-dev xvfb xauth dbus-x11
+          /usr/bin/python3 -m venv --system-site-packages .venv
+          .venv/bin/python -m pip install -r requirements-dev.txt 'cryptography>=42'
+      - name: Static analysis and formatting
+        run: .venv/bin/python tools/check_quality.py
+      - name: Unit tests and Debian packaging
+        env:
+          PYTHONPATH: src
+        run: .venv/bin/python -m unittest discover -s tests
+      - name: GTK integration
+        env:
+          PYTHONPATH: src
+          GTK_A11Y: none
+          GSK_RENDERER: cairo
+        run: |
+          dbus-run-session -- xvfb-run -a .venv/bin/python tools/check_ui.py
+          dbus-run-session -- xvfb-run -a .venv/bin/python tools/check_window_layout.py

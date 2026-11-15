@@ -62,9 +62,11 @@ class StatusTests(unittest.IsolatedAsyncioTestCase):
         for name in ("status", "status_indicator", "status_spinner", "connection_actions", "details", "username", "pin", "password", "certificates",
                      "scan_button", "connect_button", "stop_button", "remember", "remember_pin", "certificate_info", "forget_button"):
             setattr(window, name, Mock())
-        window.vault_task = None
+        for field in (window.username, window.pin, window.password):
+            field.get_text.return_value = ""
         MainWindow.refresh(window)
-        window.status.set_markup.assert_called_once_with('<span foreground="#1c71d8" weight="bold">Doğrulanamıyor</span>')
+        window.status.set_text.assert_called_once_with("Doğrulanamıyor")
+        window.status.set_css_classes.assert_called_with(["caption", "connection-status", "working"])
         window.connect_button.set_sensitive.assert_called_once_with(False)
         window.scan_button.set_sensitive.assert_called_once_with(False)
         window.username.set_sensitive.assert_called_once_with(False)

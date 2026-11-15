@@ -3,12 +3,6 @@
   font-family: "AdaletVPN Text";
 }
 
-window.tray-flight,
-window.tray-flight * {
-  background-color: transparent;
-  box-shadow: none;
-}
-
 @keyframes adaletvpn-spin {
   to {
     -gtk-icon-transform: rotate(1turn);
@@ -196,4 +190,57 @@ checkbutton.remember-option {
 checkbutton.remember-option.remember-selected {
   background-color: alpha(@theme_selected_bg_color, 0.10);
   border-color: alpha(@theme_selected_bg_color, 0.40);
+}
+
+/* Keep status colors in one place for both the dot and the text. */
+.connection-status { font-weight: bold; }
+.connection-status.online { color: #22863a; }
+.connection-status.offline { color: #777777; }
+.connection-status.error, .pin-warning { color: #c01c28; }
+.connection-status.working { color: #1c71d8; }
+.pin-warning { font-weight: bold; }
+.adaletvpn-dark .connection-status.online { color: #65d58a; }
+.adaletvpn-dark .connection-status.offline { color: #c0c0c0; }
+.adaletvpn-dark .connection-status.error,
+.adaletvpn-dark .pin-warning { color: #ff8a92; }
+.adaletvpn-dark .connection-status.working { color: #81baff; }
+
+.about-window .about-developer {
+  font-size: 15px;
+  font-weight: 700;
+}
+.about-window .about-version {
+  color: #81baff;
+  background-color: alpha(#5186c6, 0.12);
+  border: 2px solid #5186c6;
+  border-radius: 18px;
+  padding: 4px 16px;
+  font-weight: 700;
+}
+.about-window .about-version.hovered {
+  color: #ffffff;
+  background-color: #397dc9;
+  border-color: #397dc9;
+}
+.about-window .about-website {
+  color: @theme_fg_color;
+  background-image: none;
+  background-color: alpha(@theme_fg_color, 0.08);
+  border: none;
+  border-radius: 14px;
+  padding: 16px 14px;
+  box-shadow: none;
+}
+.about-window .about-website:hover {
+  background-color: alpha(@theme_fg_color, 0.13);
+}
+.about-window .about-website label {
+  text-decoration-line: none;
+  font-weight: 400;
+}
+
+button.tray-titlebutton {
+  min-width: 34px;
+  min-height: 34px;
+  padding: 0;
 }

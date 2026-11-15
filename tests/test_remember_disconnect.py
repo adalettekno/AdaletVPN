@@ -5,6 +5,7 @@ from unittest.mock import Mock, AsyncMock
 
 from adaletvpn.core import Controller, Credentials, ConnectionError, State
 from adaletvpn.ui import MainWindow
+from adaletvpn.vault_coordinator import VaultCoordinator
 
 
 class Field:
@@ -13,6 +14,9 @@ class Field:
 
     def get_text(self):
         return self.text
+
+    def remove_css_class(self, name):
+        pass
 
     def set_text(self, text):
         self.text = text
@@ -37,7 +41,7 @@ class RememberDisconnectTests(unittest.IsolatedAsyncioTestCase):
                     async def run():
                         controller.state = State.CONNECTED
                     return run()
-                w.connect_and_remember = connect
+                w.vault_actions = SimpleNamespace(connect_and_remember=connect, cancel_vault=Mock())
                 w.start = lambda coroutine: setattr(w, 'task', asyncio.create_task(coroutine))
                 MainWindow.connect_vpn(w)
                 await w.task
@@ -104,6 +108,6 @@ class RememberDisconnectTests(unittest.IsolatedAsyncioTestCase):
             connect=AsyncMock(side_effect=ConnectionError('warning')),
             error_code='pin_final_warning'), pin=Field('123456'), password=Field('test-password'))
         with self.assertRaises(ConnectionError):
-            await MainWindow.connect_and_remember(w, Credentials('ab123', '123456', 'test-password'), 'card', None)
+            await VaultCoordinator(w).connect_and_remember(Credentials('ab123', '123456', 'test-password'), 'card', None)
         self.assertEqual(w.pin.get_text(), '')
         self.assertEqual(w.password.get_text(), 'test-password')

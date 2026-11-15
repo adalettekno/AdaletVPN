@@ -31,7 +31,7 @@ def check():
     try:
         assert count<80
         if window.task and not window.task.done():return True
-        if window.vault_task and not window.vault_task.done():return True
+        if window.vault_actions.task and not window.vault_actions.task.done():return True
         if phase==0:
             assert not window.remember.get_active()
             assert not window.remember_pin.get_active()

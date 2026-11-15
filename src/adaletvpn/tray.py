@@ -12,7 +12,6 @@ from adaletvpn.core import State
 APP_ICON = "com.adalettekno.AdaletVPN"
 CONNECTED_ICON = "com.adalettekno.AdaletVPN-connected"
 RING = (101, 213, 138, 255)
-TOOLTIP = "AdaletVPN — Bağlı"
 WATCHER = "org.kde.StatusNotifierWatcher"
 WATCHER_PATH = "/StatusNotifierWatcher"
 ITEM = "org.kde.StatusNotifierItem"
@@ -39,6 +38,8 @@ XML = f'''<node><interface name="{ITEM}">
 <method name="Activate"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
 <method name="SecondaryActivate"><arg type="i" direction="in"/><arg type="i" direction="in"/></method>
 <method name="Scroll"><arg type="i" direction="in"/><arg type="s" direction="in"/></method>
+<signal name="NewIcon"/>
+<signal name="NewToolTip"/>
 <signal name="NewStatus"><arg type="s"/></signal>
 <signal name="NewAttentionIcon"/>
 </interface></node>'''
@@ -50,20 +51,6 @@ def cache_root():
     if not path.is_absolute():
         path = Path.home() / ".cache"
     return path / "adaletvpn"
-
-
-def tray_minimize(active, ready, state, closing):
-    return bool(active and ready and not closing and state in (State.CONNECTED, State.UNKNOWN))
-
-
-def tray_view(active, state, busy, closing):
-    if closing:
-        return False, "drop" if active else None
-    if state == State.CONNECTED and not active and not busy:
-        return True, "appear"
-    if active and state not in (State.CONNECTED, State.UNKNOWN):
-        return False, "retire"
-    return active, None
 
 
 def write_connected_icon(source, destination):
@@ -102,56 +89,6 @@ def write_connected_icon(source, destination):
             )
     temporary = destination.with_suffix(".png.tmp")
     canvas.save(temporary, "PNG")
-    temporary.replace(destination)
-    return destination
-
-
-def render_flight_icon(source, size):
-    from PIL import Image
-    image = Image.open(source).convert("RGBA")
-    canvas = Image.new("RGBA", (size, size), (0, 0, 0, 0))
-    ring_width = 2
-    gap = 2
-    inner_size = max(1, size - 2 * (ring_width + gap))
-    inner = image.resize((inner_size, inner_size), Image.Resampling.LANCZOS)
-    offset = (size - inner_size) // 2
-    canvas.paste(inner, (offset, offset), inner)
-    pixels = canvas.load()
-    center = (size - 1) / 2
-    outer = size / 2 - 0.5
-    inner_edge = outer - ring_width
-    for y in range(size):
-        for x in range(size):
-            distance = math.hypot(x - center, y - center)
-            if distance < inner_edge - 1 or distance > outer + 1:
-                continue
-            cover = 1.0
-            if distance < inner_edge:
-                cover = min(cover, distance - (inner_edge - 1))
-            if distance > outer:
-                cover = min(cover, (outer + 1) - distance)
-            cover = max(0.0, min(1.0, cover))
-            if cover <= 0:
-                continue
-            red, green, blue, alpha = pixels[x, y]
-            pixels[x, y] = (
-                int(RING[0] * cover + red * (1 - cover)),
-                int(RING[1] * cover + green * (1 - cover)),
-                int(RING[2] * cover + blue * (1 - cover)),
-                max(alpha, int(255 * cover)),
-            )
-    return canvas
-
-
-def write_flight_icon(source, size):
-    destination = cache_root() / "icons" / "flight" / f"{size}.png"
-    source = Path(source)
-    if not source.is_file():
-        return destination
-    destination.parent.mkdir(parents=True, exist_ok=True)
-    image = render_flight_icon(source, size)
-    temporary = destination.with_suffix(".png.tmp")
-    image.save(temporary, "PNG")
     temporary.replace(destination)
     return destination
 
@@ -218,10 +155,11 @@ class TrayIcon:
         self.ready = False
         self.stopped = False
         self.status = "Active"
-        self.pulse_id = 0
+        self.state = State.DISCONNECTED
 
     def start(self, source):
         try:
+            self.source = source
             self.theme_path = str(install_tray_theme(source))
             self.frames = icon_frames(source)
             self.bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
@@ -236,9 +174,6 @@ class TrayIcon:
 
     def stop(self):
         self.stopped = True
-        if self.pulse_id:
-            GLib.source_remove(self.pulse_id)
-            self.pulse_id = 0
         if self.registration:
             self.bus.unregister_object(self.registration)
             self.registration = 0
@@ -282,30 +217,25 @@ class TrayIcon:
         self.ready = True
         self.on_ready()
 
-    def pulse(self):
-        if self.stopped or not self.ready:
+    def set_state(self, state):
+        if self.state == state and getattr(self, "_rendered_state", None) == state:
             return
-        self.announce("NeedsAttention")
-        if self.pulse_id:
-            GLib.source_remove(self.pulse_id)
-        self.pulse_id = GLib.timeout_add(700, self.settle)
-
-    def settle(self):
-        self.pulse_id = 0
-        if not self.stopped:
-            self.announce("Active")
-        return False
-
-    def announce(self, status):
-        self.status = status
-        if self.bus is None or self.stopped:
-            return
-        self.bus.emit_signal(None, ITEM_PATH, ITEM, "NewStatus", GLib.Variant("(s)", (status,)))
-        if status == "NeedsAttention":
-            self.bus.emit_signal(None, ITEM_PATH, ITEM, "NewAttentionIcon", None)
-        self.bus.emit_signal(
-            None, ITEM_PATH, "org.freedesktop.DBus.Properties", "PropertiesChanged",
-            GLib.Variant("(sa{sv}as)", (ITEM, {"Status": GLib.Variant("s", status)}, [])))
+        self.state = state
+        self._rendered_state = state
+        if state == State.CONNECTED:
+            self.frames = icon_frames(self.source)
+        else:
+            from PIL import Image
+            image = Image.open(self.source).convert("RGBA")
+            self.frames = []
+            for size in ICON_SIZES:
+                raw = image.resize((size, size), Image.Resampling.LANCZOS).tobytes("raw", "RGBA")
+                argb = b"".join(bytes((raw[i + 3], raw[i], raw[i + 1], raw[i + 2]))
+                                for i in range(0, len(raw), 4))
+                self.frames.append((size, size, argb))
+        if self.bus is not None and self.ready and not self.stopped:
+            for signal in ("NewIcon", "NewToolTip"):
+                self.bus.emit_signal(None, ITEM_PATH, ITEM, signal, None)
 
     def dispatch(self, _bus, _sender, _path, _interface, method, _parameters, invocation):
         if method in ("Activate", "SecondaryActivate"):
@@ -321,15 +251,15 @@ class TrayIcon:
             "Title": GLib.Variant("s", "AdaletVPN"),
             "Status": GLib.Variant("s", self.status),
             "WindowId": GLib.Variant("i", 0),
-            "IconName": GLib.Variant("s", CONNECTED_ICON),
+            "IconName": GLib.Variant("s", CONNECTED_ICON if self.state == State.CONNECTED else ""),
             "IconPixmap": pixmaps,
             "IconThemePath": GLib.Variant("s", self.theme_path),
             "OverlayIconName": GLib.Variant("s", ""),
             "OverlayIconPixmap": empty,
-            "AttentionIconName": GLib.Variant("s", CONNECTED_ICON),
+            "AttentionIconName": GLib.Variant("s", CONNECTED_ICON if self.state == State.CONNECTED else ""),
             "AttentionIconPixmap": pixmaps,
             "AttentionMovieName": GLib.Variant("s", ""),
-            "ToolTip": GLib.Variant("(sa(iiay)ss)", ("", self.frames, TOOLTIP, "")),
+            "ToolTip": GLib.Variant("(sa(iiay)ss)", ("", self.frames, "AdaletVPN — " + self.state.value, "")),
             "ItemIsMenu": GLib.Variant("b", False),
             "Menu": GLib.Variant("o", "/"),
         }

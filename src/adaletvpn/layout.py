@@ -8,6 +8,7 @@ from gi.repository import GLib, Gtk, Pango
 
 from adaletvpn.remember_preferences import read_remember
 from adaletvpn.vault_feedback import VaultFeedback
+from adaletvpn.vault_coordinator import VaultOperation
 
 
 class CircularPowerButton(Gtk.Button):
@@ -119,6 +120,20 @@ def install_titlebar(window, heading):
     header.pack_end(title_button("window-close-symbolic", "Kapat", lambda *_: window.close()))
     header.pack_end(title_button("window-maximize-symbolic", "Ekranı kapla", window.toggle_maximize))
     header.pack_end(title_button("window-minimize-symbolic", "Simge durumuna küçült", window.title_minimize))
+    window.tray_button = Gtk.Button(tooltip_text="Tepsiye küçült")
+    arrow = Gtk.Label(label="↙")
+    arrow.set_size_request(16, 16)
+    window.tray_button.set_child(arrow)
+    window.tray_button.add_css_class("image-button")
+    window.tray_button.add_css_class("tray-titlebutton")
+    window.tray_button.add_css_class("titlebutton")
+    window.tray_button.set_valign(Gtk.Align.CENTER)
+    window.tray_button.update_property([Gtk.AccessibleProperty.LABEL], ["Tepsiye küçült"])
+    window.tray_button.connect("clicked", window.minimize_to_tray)
+    header.pack_end(window.tray_button)
+    window.about_button = title_button("help-about-symbolic", "Hakkında", window.show_about)
+    window.about_button.update_property([Gtk.AccessibleProperty.LABEL], ["Hakkında"])
+    header.pack_end(window.about_button)
     window.set_titlebar(header)
 
 
@@ -172,6 +187,10 @@ def build(window):
     username_focus.connect("enter", lambda *_: window.username.set_position(-1)
                            if window.username.get_text() == "ab" else None)
     window.username.add_controller(username_focus)
+    username_keys = Gtk.EventControllerKey()
+    username_keys.set_propagation_phase(Gtk.PropagationPhase.CAPTURE)
+    username_keys.connect("key-pressed", window.username_key_pressed)
+    window.username.add_controller(username_keys)
     window.pin = Gtk.PasswordEntry(placeholder_text="E-imza şifresi", show_peek_icon=True)
     window.password = Gtk.PasswordEntry(placeholder_text="Bilgisayar şifresi", show_peek_icon=True)
     password_keys = Gtk.EventControllerKey()
@@ -184,7 +203,22 @@ def build(window):
     pin_keys.connect("key-pressed", window.pin_key_pressed)
     pin_keys.connect("key-released", window.pin_key_released)
     window.pin.add_controller(pin_keys)
-    window.certificates = Gtk.DropDown.new_from_strings(["Önce sertifikaları tarayın"])
+    window.certificates = Gtk.DropDown.new_from_strings(["Sertifikalar taranıyor"])
+    factory = Gtk.SignalListItemFactory()
+
+    def setup_certificate_label(_factory, item):
+        label = Gtk.Label(xalign=0, ellipsize=Pango.EllipsizeMode.END)
+        label.set_width_chars(20)
+        label.set_max_width_chars(20)
+        item.set_child(label)
+
+    def bind_certificate_label(_factory, item):
+        item.get_child().set_text(item.get_item().get_string())
+
+    factory.connect("setup", setup_certificate_label)
+    factory.connect("bind", bind_certificate_label)
+    window.certificates.set_factory(factory)
+    window.certificates.set_list_factory(factory)
     settings = window.get_settings()
     theme_properties = ["gtk-theme-name", "gtk-application-prefer-dark-theme"]
     if settings.find_property("gtk-interface-color-scheme") is not None:
@@ -192,6 +226,7 @@ def build(window):
     theme_handlers = [settings.connect("notify::" + name, lambda *_: GLib.idle_add(window.update_header_icon_theme))
                       for name in theme_properties]
     window.connect("map", lambda *_: window.update_header_icon_theme())
+    window.connect("map", lambda *_: GLib.idle_add(window.focus_initial_username))
     window.connect("unrealize", lambda *_: [settings.disconnect(handler) for handler in theme_handlers])
     window.certificates.connect("notify::selected", window.select_certificate)
     certificate_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
@@ -199,6 +234,7 @@ def build(window):
     window.certificates.set_hexpand(True)
     certificate_row.append(window.certificates)
     certificate_actions = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+    certificate_actions.set_homogeneous(True)
     window.scan_button = Gtk.Button(icon_name="view-refresh-symbolic")
     window.scan_button.set_tooltip_text("Sertifikaları yenile")
     window.scan_button.update_property([Gtk.AccessibleProperty.LABEL], ["Sertifikaları yenile"])
@@ -213,20 +249,33 @@ def build(window):
     scan_panel = Gtk.Popover()
     scan_panel.set_child(window.scan_problem)
     window.scan_warning.set_popover(scan_panel)
-    certificate_actions.append(window.scan_warning)
+    def stable_slot(widget):
+        slot = Gtk.Box()
+        slot.set_size_request(36, 36)
+        widget.set_halign(Gtk.Align.FILL)
+        widget.set_valign(Gtk.Align.FILL)
+        widget.set_hexpand(True)
+        slot.append(widget)
+        return slot
+
     window.certificate_info = Gtk.Button(icon_name="dialog-information-symbolic")
     window.certificate_info.set_tooltip_text("Sertifika bilgileri")
     window.certificate_info.update_property([Gtk.AccessibleProperty.LABEL], ["Sertifika bilgileri"])
     window.certificate_info.connect("clicked", window.show_certificate_info)
-    certificate_actions.append(window.certificate_info)
-    certificate_actions.append(window.scan_button)
+    certificate_actions.append(stable_slot(window.certificate_info))
+    certificate_actions.append(stable_slot(window.scan_button))
     certificate_row.append(certificate_actions)
     box.append(certificate_row)
     window.details = Gtk.Image()
     window.details.set_pixel_size(16)
     window.details.add_css_class("certificate-status")
     window.details.set_visible(False)
-    certificate_actions.prepend(window.details)
+    certificate_state = Gtk.Overlay()
+    certificate_state.set_child(stable_slot(window.details))
+    window.scan_warning.set_halign(Gtk.Align.FILL)
+    window.scan_warning.set_valign(Gtk.Align.FILL)
+    certificate_state.add_overlay(window.scan_warning)
+    certificate_actions.prepend(certificate_state)
     if window.read_only:
         hint = Gtk.Label(label="Tarih kontrolü, sertifikanın güvenilirliğini veya UYAP uyumluluğunu doğrulamaz.", xalign=0, wrap=True)
         hint.set_max_width_chars(65)
@@ -260,7 +309,7 @@ def build(window):
     window.remember.set_halign(Gtk.Align.START)
     window.remember.set_active(window.managed_connection and read_remember())
     window.remember.set_visible(window.managed_connection)
-    window.remember.connect("toggled", window.remember_toggled)
+    window.remember.connect("toggled", window.vault_actions.remember_toggled)
     window.remember.set_valign(Gtk.Align.FILL)
     fields.attach(window.vault_message.wrap(window.remember, "remember"), 1, 1, 1, 1)
     window.remember_pin = Gtk.CheckButton(label="Hatırla")
@@ -268,7 +317,7 @@ def build(window):
     window.remember_pin.set_halign(Gtk.Align.START)
     window.remember_pin.set_active(window.managed_connection and read_remember(pin=True))
     window.remember_pin.set_visible(window.managed_connection)
-    window.remember_pin.connect("toggled", window.pin_remember_toggled)
+    window.remember_pin.connect("toggled", window.vault_actions.pin_remember_toggled)
     window.remember_pin.set_valign(Gtk.Align.FILL)
     fields.attach(window.vault_message.wrap(window.remember_pin, "pin"), 1, 2, 1, 1)
 
@@ -282,21 +331,21 @@ def build(window):
         widget.add_css_class("remember-option")
         update_remember_style(widget)
         widget.connect("toggled", update_remember_style)
-    window.forget_button = Gtk.Button()
+    window.forget_button = Gtk.Button(label="Kaydı sil")
     window.forget_button.add_css_class("forget-action")
-    window.forget_button.set_hexpand(False)
-    window.forget_button.set_halign(Gtk.Align.FILL)
-    window.forget_button.set_valign(Gtk.Align.FILL)
-    forget_content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
-    forget_content.set_valign(Gtk.Align.CENTER)
-    forget_content.append(Gtk.Image.new_from_icon_name("user-trash-symbolic"))
-    forget_content.append(Gtk.Label(label="Kayıtlı\nbilgileri sil", justify=Gtk.Justification.CENTER))
-    window.forget_button.set_child(forget_content)
-    window.forget_button.set_visible(window.managed_connection)
-    window.forget_button.connect("clicked", lambda *_: window.start_vault(window.forget_credentials()))
-    fields.attach(window.vault_message.wrap(window.forget_button, "forget"), 2, 1, 1, 2)
+    window.forget_button.set_tooltip_text(
+        "Tüm kartlar için kaydedilmiş sicil numarası, bilgisayar şifresi ve e-imza PIN’ini sil")
+    window.forget_button.connect("clicked", lambda *_: window.vault_actions.start_vault(
+        VaultOperation.DELETE, window.vault_actions.forget_credentials()))
+    fields.attach(window.vault_message.wrap(window.forget_button, "forget"), 1, 0, 1, 1)
+    option_widths = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.HORIZONTAL)
     field_heights = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.VERTICAL)
-    for widget in (window.password, window.pin, window.remember, window.remember_pin):
+    for widget in (window.forget_button, window.remember, window.remember_pin):
+        widget.set_halign(Gtk.Align.FILL)
+        widget.set_valign(Gtk.Align.FILL)
+        option_widths.add_widget(widget)
+    for widget in (window.username, window.password, window.pin,
+                   window.forget_button, window.remember, window.remember_pin):
         field_heights.add_widget(widget)
     row = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=4)
     row.set_valign(Gtk.Align.CENTER)
@@ -326,11 +375,12 @@ def build(window):
     window.status_display.set_halign(Gtk.Align.FILL)
     window.status_display.set_valign(Gtk.Align.CENTER)
     window.status_display.set_size_request(140, 40)
-    status_height = Gtk.SizeGroup(mode=Gtk.SizeGroupMode.VERTICAL)
-    status_height.add_widget(username_field)
-    status_height.add_widget(window.status_display)
-    fields.attach(window.status_display, 1, 0, 2, 1)
-    fields.attach(row, 3, 0, 1, 3)
+    field_heights.add_widget(window.status_display)
+    if window.read_only:
+        box.append(window.status_display)
+    else:
+        fields.attach(window.status_display, 2, 0, 1, 1)
+    fields.attach(row, 2, 1, 1, 2)
     window.status = Gtk.Label(xalign=0.5, wrap=True, justify=Gtk.Justification.CENTER)
     window.status.set_wrap_mode(Pango.WrapMode.WORD)
     window.status.set_max_width_chars(12)

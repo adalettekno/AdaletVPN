@@ -204,4 +204,4 @@ class UIImprovementTests(unittest.IsolatedAsyncioTestCase):
         window.dark_theme = True
         window.vault_task = None
         MainWindow.refresh(window)
-        self.assertIn('#c0c0c0', window.status.set_markup.call_args.args[0])
+        window.status.set_css_classes.assert_called_with(["caption", "connection-status", "offline"])

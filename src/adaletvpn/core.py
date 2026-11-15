@@ -16,6 +16,21 @@ class State(Enum):
     ERROR = "Hata"
 
 
+class CertificateValidity(Enum):
+    UNKNOWN = "Tarih bilgisi okunamadı"
+    NOT_YET_VALID = "Henüz geçerli değil"
+    EXPIRED = "Süresi dolmuş"
+    VALID = "Geçerlilik tarihleri içinde"
+
+
+class CertificateProblem(Enum):
+    DETAILS = "Sertifika ayrıntıları doğrulanamadı."
+    DATES = "Sertifika geçerlilik tarihleri dışında."
+    CA = "Kök veya ara kurum sertifikasıyla bağlantı kurulamaz."
+    SIGNATURE = "Sertifika imzalama kullanımına izin vermiyor."
+    CLIENT_AUTH = "Sertifika istemci kimlik doğrulamasına izin vermiyor."
+
+
 @dataclass(frozen=True)
 class Certificate:
 
@@ -32,27 +47,34 @@ class Certificate:
     is_ca: bool | None = None
 
     def connection_problem(self) -> str | None:
+        problem = self.problem_code()
+        return problem.value if problem else None
+
+    def problem_code(self) -> CertificateProblem | None:
         if self.details_error or self.not_before is None or self.not_after is None:
-            return "Sertifika ayrıntıları doğrulanamadı."
-        if self.validity() != "Geçerlilik tarihleri içinde":
-            return "Sertifika geçerlilik tarihleri dışında."
+            return CertificateProblem.DETAILS
+        if self.validity_code() is not CertificateValidity.VALID:
+            return CertificateProblem.DATES
         if self.is_ca:
-            return "Kök veya ara kurum sertifikasıyla bağlantı kurulamaz."
+            return CertificateProblem.CA
         if self.digital_signature is False:
-            return "Sertifika imzalama kullanımına izin vermiyor."
+            return CertificateProblem.SIGNATURE
         if self.client_auth is False:
-            return "Sertifika istemci kimlik doğrulamasına izin vermiyor."
+            return CertificateProblem.CLIENT_AUTH
         return None
 
     def validity(self, now: datetime | None = None) -> str:
+        return self.validity_code(now).value
+
+    def validity_code(self, now: datetime | None = None) -> CertificateValidity:
         if self.not_before is None or self.not_after is None:
-            return "Tarih bilgisi okunamadı"
+            return CertificateValidity.UNKNOWN
         now = now or datetime.now(timezone.utc)
         if now < self.not_before:
-            return "Henüz geçerli değil"
+            return CertificateValidity.NOT_YET_VALID
         if now > self.not_after:
-            return "Süresi dolmuş"
-        return "Geçerlilik tarihleri içinde"
+            return CertificateValidity.EXPIRED
+        return CertificateValidity.VALID
 
 
 @dataclass
@@ -168,6 +190,36 @@ class Controller:
         if not any(item.identifier == identifier for item in self.certificates):
             raise ConnectionError("Seçilen sertifika listede bulunamadı.")
         self.selected_id = identifier
+
+    def clear_selection(self) -> None:
+        self._require_idle()
+        self.selected_id = None
+
+    def clear_error(self) -> None:
+        self.error = None
+
+    @property
+    def needs_cleanup(self) -> bool:
+        return self._needs_cleanup
+
+    async def check_connection(self) -> None:
+        """Ignore late monitor results after a disconnect or shutdown transition."""
+        if self.state not in (State.CONNECTED, State.UNKNOWN):
+            return
+        try:
+            connected = await self.client.is_connected()
+            if self.state in (State.CONNECTED, State.UNKNOWN):
+                if connected:
+                    self.state = State.CONNECTED
+                    self.error = None
+                else:
+                    await self.connection_lost()
+        except asyncio.CancelledError:
+            raise
+        except Exception:
+            if self.state in (State.CONNECTED, State.UNKNOWN):
+                self.state = State.UNKNOWN
+                self.error = "Bağlantı durumu doğrulanamadı. Bağlantıyı kesmeyi deneyin."
 
     async def connect(self, credentials: Credentials) -> None:
 

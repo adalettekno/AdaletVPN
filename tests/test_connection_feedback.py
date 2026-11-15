@@ -27,6 +27,5 @@ class ConnectionFeedbackTests(unittest.TestCase):
     def test_pin_attempt_warning_is_red_and_bold(self):
         label = Mock()
         show_message(label, MESSAGES["pin_last_left"])
-        markup = label.set_markup.call_args.args[0]
-        self.assertIn('foreground="#c01c28" weight="bold"', markup)
-        self.assertIn(MESSAGES["pin_last_left"], markup)
+        label.add_css_class.assert_called_with("pin-warning")
+        label.set_text.assert_called_with(MESSAGES["pin_last_left"])

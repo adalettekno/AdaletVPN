@@ -8,6 +8,7 @@
     <p>AdaletVPN, Linux üzerinde e-imza ile UYAP VPN bağlantısı kurmanızı sağlar.</p>
   </description>
   <releases>
+    <release version="1.1.0" date="2026-11-15"/>
     <release version="1.0.0" date="2026-10-25"/>
   </releases>
   <developer id="com.adalettekno">

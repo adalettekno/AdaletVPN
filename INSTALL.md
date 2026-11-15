@@ -1,9 +1,9 @@
 # Kurulum
 
-`adaletvpn_1.0.0_amd64.deb` dosyasını yazılım kurucusuyla açın. Kurucu açmazsa, dosyanın bulunduğu dizinde:
+`adaletvpn_1.1.0_amd64.deb` dosyasını yazılım kurucusuyla açın. Kurucu açmazsa, dosyanın bulunduğu dizinde:
 
 ```sh
-sudo apt install ./adaletvpn_1.0.0_amd64.deb
+sudo apt install ./adaletvpn_1.1.0_amd64.deb
 ```
 
 Kurulum bitince AdaletVPN uygulama menüsünde görünür. Masaüstüne kısayol konmaz.
@@ -30,7 +30,7 @@ Paket Debian ve Ubuntu tabanlı sistemler içindir. amd64 paketi 64 bit Intel ve
 sudo apt remove adaletvpn
 ```
 
-Bu, kasadaki sicil, parola ve PIN kayıtlarını silmez. Onları paket dururken uygulamadaki «Kayıtlı bilgileri sil» ile kaldırın.
+Bu, kasadaki sicil, parola ve PIN kayıtlarını silmez. Onları paket dururken uygulamadaki «Kaydı sil» düğmesiyle kaldırın.
 
 # Derleme
 
